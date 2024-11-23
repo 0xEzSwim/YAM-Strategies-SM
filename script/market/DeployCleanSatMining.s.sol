@@ -8,6 +8,8 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {CleanSatMining} from "../../src/market/CleanSatMining.sol";
 
 contract DeployCleanSatMining is Script {
+    bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
+
     struct Initializer {
         address admin;
         address moderator;
@@ -15,10 +17,10 @@ contract DeployCleanSatMining is Script {
 
     function run(address _owner) external returns (address) {
         Initializer memory initializer = Initializer(_owner, _owner);
-        (address proxy, address implementation) = deploy(initializer);
         console.log("_DeployCleanSatMining_");
-        console.log("proxy address:", proxy);
-        console.log("implementation address:", implementation);
+        (address proxy, address implementation) = deploy(initializer);
+        console.log("\t=>proxy address:", proxy);
+        console.log("\t=>implementation address:", implementation);
 
         return proxy;
     }

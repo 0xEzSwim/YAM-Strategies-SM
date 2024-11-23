@@ -9,6 +9,9 @@ out/
 
 # Docs
 docs/
+script/box/*
+src/box/*
+test/box/*
 
 # Dotenv file
 .env

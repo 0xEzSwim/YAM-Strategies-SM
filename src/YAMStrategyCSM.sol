@@ -10,7 +10,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {CleanSatMining} from "./market/CleanSatMining.sol";
 
-contract CSMStrategy is AccessControlUpgradeable, PausableUpgradeable, ERC4626Upgradeable, UUPSUpgradeable {
+contract YAMStrategyCSM is AccessControlUpgradeable, PausableUpgradeable, ERC4626Upgradeable, UUPSUpgradeable {
     using Math for uint256;
 
     error CSMStrategy__NotUnderlyingAsset(address token);
@@ -31,11 +31,16 @@ contract CSMStrategy is AccessControlUpgradeable, PausableUpgradeable, ERC4626Up
     function initialize(
         address _admin,
         address _moderator,
+        string calldata _name,
         address _asset,
         address _csmMarket,
         address[] calldata _csmTokens
     ) public initializer {
         __AccessControl_init();
+        __ERC20_init(
+            string.concat("YAM Strategy CSM ", ERC20(_asset).name(), " ", _name),
+            string.concat("YS-CSM-", ERC20(_asset).symbol(), "-", _name)
+        );
         __ERC4626_init(ERC20(_asset));
         __UUPSUpgradeable_init();
 
@@ -84,6 +89,14 @@ contract CSMStrategy is AccessControlUpgradeable, PausableUpgradeable, ERC4626Up
 
     function _decimalsOffset() internal pure override returns (uint8) {
         return 18;
+    }
+
+    function getCsmMarket() external view returns (address) {
+        return csmMarket;
+    }
+
+    function getCsmToken(uint256 index) external view returns (address) {
+        return csmTokens[index];
     }
 
     function addCsmToken(address token) external whenNotPaused onlyRole(DEFAULT_ADMIN_ROLE) {

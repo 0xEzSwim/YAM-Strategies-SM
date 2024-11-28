@@ -15,8 +15,8 @@ contract DeployCleanSatMining is Script {
         address moderator;
     }
 
-    function run(address _owner) external returns (address) {
-        Initializer memory initializer = Initializer(_owner, _owner);
+    function run(address owner) external returns (address) {
+        Initializer memory initializer = Initializer(owner, owner);
         console.log("_DeployCleanSatMining_");
         (address proxy, address implementation) = deploy(initializer);
         console.log("\t=>proxy address:", proxy);
@@ -25,9 +25,9 @@ contract DeployCleanSatMining is Script {
         return proxy;
     }
 
-    function deploy(Initializer memory _initializer) private returns (address proxy, address implementation) {
+    function deploy(Initializer memory initializer) private returns (address proxy, address implementation) {
         implementation = deployStrategy();
-        proxy = deployProxyByOwner(_initializer, implementation);
+        proxy = deployProxyByOwner(initializer, implementation);
 
         return (proxy, implementation);
     }
@@ -40,11 +40,11 @@ contract DeployCleanSatMining is Script {
         return address(implementation);
     }
 
-    function deployProxyByOwner(Initializer memory _initializer, address _implementation) private returns (address) {
+    function deployProxyByOwner(Initializer memory initializer, address implementation) private returns (address) {
         bytes memory data =
-            abi.encodeWithSelector(CleanSatMining.initialize.selector, _initializer.admin, _initializer.moderator); // set proxy admin & moderator
+            abi.encodeWithSelector(CleanSatMining.initialize.selector, initializer.admin, initializer.moderator); // set proxy admin & moderator
         vm.startBroadcast();
-        ERC1967Proxy proxy = new ERC1967Proxy(address(_implementation), data);
+        ERC1967Proxy proxy = new ERC1967Proxy(implementation, data);
         vm.stopBroadcast();
         return address(proxy);
     }

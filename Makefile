@@ -49,7 +49,7 @@ anvil :; anvil -m 'test test test test test test test test test test test junk' 
 # get-sepolia-box-version:
 # 	@cast call $(PROXY_CONTRACT_ADDRESS) "getVersion()(uint64)" --rpc-url $(SEPOLIA_RPC_URL)
 
-start: fund-accounts
+dev: fund-accounts
 	@forge script script/DeployYAMStrategyCSM.s.sol:DeployYAMStrategyCSM --sig "run(string)" "Undervalued" --rpc-url $(LOCAL_RPC_URL) --broadcast --account $(ADMIN_ACCOUNT_NAME) --password $(ADMIN_ACCOUNT_PASSWORD) --sender $(ADMIN_PUBLIC_KEY)
 
 fund-accounts:

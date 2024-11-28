@@ -13,15 +13,20 @@ import {CleanSatMining} from "./market/CleanSatMining.sol";
 contract YAMStrategyCSM is AccessControlUpgradeable, PausableUpgradeable, ERC4626Upgradeable, UUPSUpgradeable {
     using Math for uint256;
 
+    struct HoldingDetails {
+        uint256 _averageBuyingPrice;
+        bool _isTypeCSM;
+    }
+
     error CSMStrategy__NotUnderlyingAsset(address token);
     error CSMStrategy__NotCSM(address token);
     error CSMStrategy__AmountToBuyIsToLow();
 
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
     bytes32 public constant MODERATOR_ROLE = keccak256("MODERATOR_ROLE");
-    address private csmMarket;
-    address[] private csmTokens;
-    mapping(address token => bool isTypeCSM) private isTypeCSM_token;
+    address private _csmMarket;
+    address[] private _holdingsLUT;
+    mapping(address token => HoldingDetails) private _holdings;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -29,29 +34,29 @@ contract YAMStrategyCSM is AccessControlUpgradeable, PausableUpgradeable, ERC462
     }
 
     function initialize(
-        address _admin,
-        address _moderator,
-        string calldata _name,
-        address _asset,
-        address _csmMarket,
-        address[] calldata _csmTokens
+        address admin_,
+        address moderator_,
+        string calldata name_,
+        address asset_,
+        address csmMarket_,
+        address[] calldata csmTokens_
     ) public initializer {
         __AccessControl_init();
         __ERC20_init(
-            string.concat("YAM Strategy CSM ", ERC20(_asset).name(), " ", _name),
-            string.concat("YS-CSM-", ERC20(_asset).symbol(), "-", _name)
+            string.concat("YAM Strategy CSM ", ERC20(asset_).name(), " ", name_),
+            string.concat("YS-CSM-", ERC20(asset_).symbol(), "-", name_)
         );
-        __ERC4626_init(ERC20(_asset));
+        __ERC4626_init(ERC20(asset_));
         __UUPSUpgradeable_init();
 
-        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-        _grantRole(UPGRADER_ROLE, _admin);
-        _grantRole(MODERATOR_ROLE, _moderator);
+        _grantRole(DEFAULT_ADMIN_ROLE, admin_);
+        _grantRole(UPGRADER_ROLE, admin_);
+        _grantRole(MODERATOR_ROLE, moderator_);
 
-        csmMarket = _csmMarket;
-        csmTokens = _csmTokens;
-        for (uint8 i = 0; i < _csmTokens.length; i++) {
-            isTypeCSM_token[_csmTokens[i]] = true;
+        _csmMarket = csmMarket_;
+        _holdingsLUT = csmTokens_;
+        for (uint8 i = 0; i < csmTokens_.length; i++) {
+            _holdings[csmTokens_[i]] = HoldingDetails({_averageBuyingPrice: 0, _isTypeCSM: true});
         }
     }
 
@@ -69,8 +74,20 @@ contract YAMStrategyCSM is AccessControlUpgradeable, PausableUpgradeable, ERC462
         _;
     }
 
+    function getHoldingsCount() external view returns (uint256) {
+        return _holdingsLUT.length;
+    }
+
+    function getHoldingsAddress() external view returns (address[] memory) {
+        return _holdingsLUT;
+    }
+
+    function averageBuyingPrice(address token) public view returns (uint256) {
+        return _holdings[token]._averageBuyingPrice;
+    }
+
     function isCSMToken(address token) public view returns (bool) {
-        return isTypeCSM_token[token];
+        return _holdings[token]._isTypeCSM;
     }
 
     function getVersion() external view returns (uint64) {
@@ -92,16 +109,24 @@ contract YAMStrategyCSM is AccessControlUpgradeable, PausableUpgradeable, ERC462
     }
 
     function getCsmMarket() external view returns (address) {
-        return csmMarket;
+        return _csmMarket;
     }
 
     function getCsmToken(uint256 index) external view returns (address) {
-        return csmTokens[index];
+        return _holdingsLUT[index];
     }
 
     function addCsmToken(address token) external whenNotPaused onlyRole(DEFAULT_ADMIN_ROLE) {
-        csmTokens.push(token);
-        isTypeCSM_token[token] = true;
+        _holdingsLUT.push(token);
+        _holdings[token] = HoldingDetails({_averageBuyingPrice: 0, _isTypeCSM: true});
+    }
+
+    function _convertToShares(uint256 assets, Math.Rounding rounding) internal view override returns (uint256) {
+        return assets.mulDiv(totalSupply() + 10 ** _decimalsOffset(), totalAssets() + 1, rounding);
+    }
+
+    function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view override returns (uint256) {
+        return shares.mulDiv(totalAssets() + 1, totalSupply() + 10 ** _decimalsOffset(), rounding);
     }
 
     function _deposit(address caller, address receiver, uint256 assets, uint256 shares)
@@ -140,8 +165,8 @@ contract YAMStrategyCSM is AccessControlUpgradeable, PausableUpgradeable, ERC462
         uint256 oldTotalSypply = totalSupply();
         _burn(owner, shares);
         SafeERC20.safeTransfer(ERC20(asset()), receiver, assets);
-        for (uint8 i = 0; i < csmTokens.length; i++) {
-            address token = csmTokens[i];
+        for (uint8 i = 0; i < _holdingsLUT.length; i++) {
+            address token = _holdingsLUT[i];
             if (isCSMToken(token)) {
                 uint256 csmAssets = shares.mulDiv(
                     ERC20(token).balanceOf(address(this)) + 1,
@@ -170,6 +195,16 @@ contract YAMStrategyCSM is AccessControlUpgradeable, PausableUpgradeable, ERC462
         return amountToReceive;
     }
 
+    function _calculateNewHoldingBuyingPrice(address token, uint256 price, uint256 amount)
+        private
+        view
+        returns (uint256)
+    {
+        uint256 currentTokenBalance = ERC20(token).balanceOf(address(this));
+        HoldingDetails memory holding = _holdings[token];
+        return (holding._averageBuyingPrice * currentTokenBalance + price * amount) / (currentTokenBalance + amount);
+    }
+
     function buyMaxCSMTokenFromOffer(
         uint256 offerId,
         address offerToken,
@@ -189,9 +224,12 @@ contract YAMStrategyCSM is AccessControlUpgradeable, PausableUpgradeable, ERC462
             revert CSMStrategy__AmountToBuyIsToLow();
         }
 
-        uint256 priceToSend = (amountToBuy * price) / uint256(10) ** ERC20(offerToken).decimals();
-        ERC20(asset()).approve(address(csmMarket), priceToSend);
-        CleanSatMining(csmMarket).buy(offerId, price, amountToBuy);
+        uint256 newAverageBuyingPrice = _calculateNewHoldingBuyingPrice(offerToken, price, amount);
+        _holdings[offerToken] = HoldingDetails({_averageBuyingPrice: newAverageBuyingPrice, _isTypeCSM: true});
+
+        uint256 assetAmountToSell = (amountToBuy * price) / uint256(10) ** ERC20(offerToken).decimals();
+        ERC20(asset()).approve(address(_csmMarket), assetAmountToSell);
+        CleanSatMining(_csmMarket).buy(offerId, price, amountToBuy);
 
         return amountToBuy;
     }

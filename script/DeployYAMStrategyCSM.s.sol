@@ -33,9 +33,9 @@ contract DeployYAMStrategyCSM is Script {
         return proxy;
     }
 
-    function deploy(Initializer memory _initializer) private returns (address proxy, address implementation) {
+    function deploy(Initializer memory initializer) private returns (address proxy, address implementation) {
         implementation = deployStrategy();
-        proxy = deployProxyByOwner(_initializer, implementation);
+        proxy = deployProxyByOwner(initializer, implementation);
 
         return (proxy, implementation);
     }
@@ -48,18 +48,18 @@ contract DeployYAMStrategyCSM is Script {
         return address(implementation);
     }
 
-    function deployProxyByOwner(Initializer memory _initializer, address _implementation) private returns (address) {
+    function deployProxyByOwner(Initializer memory initializer, address implementation) private returns (address) {
         bytes memory data = abi.encodeWithSelector(
             YAMStrategyCSM.initialize.selector,
-            _initializer.admin,
-            _initializer.moderator,
-            _initializer.name,
-            _initializer.asset,
-            _initializer.csmMarket,
-            _initializer.csmTokens
+            initializer.admin,
+            initializer.moderator,
+            initializer.name,
+            initializer.asset,
+            initializer.csmMarket,
+            initializer.csmTokens
         ); // set proxy admin, moderator, vaul asset, market & CSM tokens
         vm.startBroadcast();
-        ERC1967Proxy proxy = new ERC1967Proxy(address(_implementation), data);
+        ERC1967Proxy proxy = new ERC1967Proxy(implementation, data);
         vm.stopBroadcast();
         return address(proxy);
     }

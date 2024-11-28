@@ -17,6 +17,16 @@ contract ActionYAMStrategyCSM is Script {
     address constant CSM_ALPHA_TOKEN = 0x5A768Da857aD9b112631f88892CdE57E09AA8A6A;
     address constant CSM_DELTA_TOKEN = 0xC731074a0c0f078C6474049AF4d5560fa70D7F77;
 
+    function toggleStrategyStatus() public {
+        vm.startBroadcast(ADMIN);
+        if (!YAMStrategyCSM(CSM_STRATEGY).paused()) {
+            YAMStrategyCSM(CSM_STRATEGY).pause();
+        } else {
+            YAMStrategyCSM(CSM_STRATEGY).unpause();
+        }
+        vm.stopBroadcast();
+    }
+
     function getAssetBalance() public view {
         console.log(USDCMock(USDC_TOKEN).balanceOf(CSM_STRATEGY));
     }

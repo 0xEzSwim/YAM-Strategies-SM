@@ -104,6 +104,57 @@ contract YAMStrategyCSM is AccessControlUpgradeable, PausableUpgradeable, ERC462
         isTypeCSM_token[token] = true;
     }
 
+    function _deposit(address caller, address receiver, uint256 assets, uint256 shares)
+        internal
+        override
+        whenNotPaused
+    {
+        // If _asset is ERC-777, `transferFrom` can trigger a reentrancy BEFORE the transfer happens through the
+        // `tokensToSend` hook. On the other hand, the `tokenReceived` hook, that is triggered after the transfer,
+        // calls the vault, which is assumed not malicious.
+        //
+        // Conclusion: we need to do the transfer before we mint so that any reentrancy would happen before the
+        // assets are transferred and before the shares are minted, which is a valid state.
+        // slither-disable-next-line reentrancy-no-eth
+        SafeERC20.safeTransferFrom(ERC20(asset()), caller, address(this), assets);
+        _mint(receiver, shares);
+
+        emit Deposit(caller, receiver, assets, shares);
+    }
+
+    function _withdraw(address caller, address receiver, address owner, uint256 assets, uint256 shares)
+        internal
+        override
+        whenNotPaused
+    {
+        if (caller != owner) {
+            _spendAllowance(owner, caller, shares);
+        }
+
+        // If _asset is ERC777, `transfer` can trigger a reentrancy AFTER the transfer happens through the
+        // `tokensReceived` hook. On the other hand, the `tokensToSend` hook, that is triggered before the transfer,
+        // calls the vault, which is assumed not malicious.
+        //
+        // Conclusion: we need to do the transfer after the burn so that any reentrancy would happen after the
+        // shares are burned and after the assets are transferred, which is a valid state.
+        uint256 oldTotalSypply = totalSupply();
+        _burn(owner, shares);
+        SafeERC20.safeTransfer(ERC20(asset()), receiver, assets);
+        for (uint8 i = 0; i < csmTokens.length; i++) {
+            address token = csmTokens[i];
+            if (isCSMToken(token)) {
+                uint256 csmAssets = shares.mulDiv(
+                    ERC20(token).balanceOf(address(this)) + 1,
+                    oldTotalSypply + 10 ** (decimals() - ERC20(token).decimals()),
+                    Math.Rounding.Floor
+                );
+                SafeERC20.safeTransfer(ERC20(token), receiver, csmAssets);
+            }
+        }
+
+        emit Withdraw(caller, receiver, owner, assets, shares);
+    }
+
     function _maxAmountToReceive(address tokenToReceive, uint256 price, uint256 amount)
         private
         view
@@ -143,38 +194,5 @@ contract YAMStrategyCSM is AccessControlUpgradeable, PausableUpgradeable, ERC462
         CleanSatMining(csmMarket).buy(offerId, price, amountToBuy);
 
         return amountToBuy;
-    }
-
-    function _withdraw(address caller, address receiver, address owner, uint256 assets, uint256 shares)
-        internal
-        override
-        whenNotPaused
-    {
-        if (caller != owner) {
-            _spendAllowance(owner, caller, shares);
-        }
-
-        // If _asset is ERC777, `transfer` can trigger a reentrancy AFTER the transfer happens through the
-        // `tokensReceived` hook. On the other hand, the `tokensToSend` hook, that is triggered before the transfer,
-        // calls the vault, which is assumed not malicious.
-        //
-        // Conclusion: we need to do the transfer after the burn so that any reentrancy would happen after the
-        // shares are burned and after the assets are transferred, which is a valid state.
-        uint256 oldTotalSypply = totalSupply();
-        _burn(owner, shares);
-        SafeERC20.safeTransfer(ERC20(asset()), receiver, assets);
-        for (uint8 i = 0; i < csmTokens.length; i++) {
-            address token = csmTokens[i];
-            if (isCSMToken(token)) {
-                uint256 csmAssets = shares.mulDiv(
-                    ERC20(token).balanceOf(address(this)) + 1,
-                    oldTotalSypply + 10 ** (decimals() - ERC20(token).decimals()),
-                    Math.Rounding.Floor
-                );
-                SafeERC20.safeTransfer(ERC20(token), receiver, csmAssets);
-            }
-        }
-
-        emit Withdraw(caller, receiver, owner, assets, shares);
     }
 }

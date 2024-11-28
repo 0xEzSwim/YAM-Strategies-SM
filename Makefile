@@ -62,6 +62,10 @@ create-local-offer:
 update-local-offer:
 	@forge script script/market/ActionCleanSatMining.s.sol:ActionCleanSatMining --sig "updatePublicSellingOfferForDeltaToken(uint256,uint256)" 7900000 200000000000 --rpc-url $(LOCAL_RPC_URL) --broadcast --account $(ADMIN_ACCOUNT_NAME) --password $(ADMIN_ACCOUNT_PASSWORD) --sender $(ADMIN_PUBLIC_KEY)
 
+toggle-local-strategy-status:
+	@forge script script/ActionYAMStrategyCSM.s.sol:ActionYAMStrategyCSM --sig "toggleStrategyStatus()" --rpc-url $(LOCAL_RPC_URL) --broadcast --account $(ADMIN_ACCOUNT_NAME) --password $(ADMIN_ACCOUNT_PASSWORD) --sender $(ADMIN_PUBLIC_KEY)
+
+
 get-local-asset-in-strategy:
 	@forge script script/ActionYAMStrategyCSM.s.sol:ActionYAMStrategyCSM --sig "getAssetBalance()" --rpc-url $(LOCAL_RPC_URL) --broadcast --account $(ADMIN_ACCOUNT_NAME) --password $(ADMIN_ACCOUNT_PASSWORD) --sender $(ADMIN_PUBLIC_KEY)
 

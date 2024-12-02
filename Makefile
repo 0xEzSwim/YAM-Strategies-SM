@@ -65,6 +65,8 @@ update-local-offer:
 toggle-local-strategy-status:
 	@forge script script/ActionYAMStrategyCSM.s.sol:ActionYAMStrategyCSM --sig "toggleStrategyStatus()" --rpc-url $(LOCAL_RPC_URL) --broadcast --account $(ADMIN_ACCOUNT_NAME) --password $(ADMIN_ACCOUNT_PASSWORD) --sender $(ADMIN_PUBLIC_KEY)
 
+get-local-strategy-tvl:
+	@forge script script/ActionYAMStrategyCSM.s.sol:ActionYAMStrategyCSM --sig "getTvl()" --rpc-url $(LOCAL_RPC_URL) --broadcast --account $(ADMIN_ACCOUNT_NAME) --password $(ADMIN_ACCOUNT_PASSWORD) --sender $(ADMIN_PUBLIC_KEY)
 
 get-local-asset-in-strategy:
 	@forge script script/ActionYAMStrategyCSM.s.sol:ActionYAMStrategyCSM --sig "getAssetBalance()" --rpc-url $(LOCAL_RPC_URL) --broadcast --account $(ADMIN_ACCOUNT_NAME) --password $(ADMIN_ACCOUNT_PASSWORD) --sender $(ADMIN_PUBLIC_KEY)

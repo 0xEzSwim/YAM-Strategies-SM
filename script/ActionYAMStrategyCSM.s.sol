@@ -27,6 +27,10 @@ contract ActionYAMStrategyCSM is Script {
         vm.stopBroadcast();
     }
 
+    function getTvl() public view {
+        console.log(YAMStrategyCSM(CSM_STRATEGY).tvl());
+    }
+
     function getAssetBalance() public view {
         console.log(USDCMock(USDC_TOKEN).balanceOf(CSM_STRATEGY));
     }

@@ -74,16 +74,32 @@ contract YAMStrategyCSM is AccessControlUpgradeable, PausableUpgradeable, ERC462
         _;
     }
 
-    function getHoldingsCount() external view returns (uint256) {
+    function holdingsCount() external view returns (uint256) {
         return _holdingsLUT.length;
     }
 
-    function getHoldingsAddress() external view returns (address[] memory) {
+    function holdingsAddress() external view returns (address[] memory) {
         return _holdingsLUT;
     }
 
-    function averageBuyingPrice(address token) public view returns (uint256) {
+    function tokenAverageBuyingPrice(address token) public view returns (uint256) {
         return _holdings[token]._averageBuyingPrice;
+    }
+
+    function tvl() public view returns (uint256) {
+        uint256 totalValueInUnderlyingAsset = totalAssets();
+        for (uint8 i = 0; i < _holdingsLUT.length; i++) {
+            address token = _holdingsLUT[i];
+            uint256 averageBuyingPrice = _holdings[token]._averageBuyingPrice;
+            if (averageBuyingPrice == 0) {
+                continue;
+            }
+
+            totalValueInUnderlyingAsset +=
+                (averageBuyingPrice * ERC20(token).balanceOf(address(this))) / uint256(10) ** ERC20(token).decimals();
+        }
+
+        return totalValueInUnderlyingAsset;
     }
 
     function isCSMToken(address token) public view returns (bool) {
@@ -122,11 +138,11 @@ contract YAMStrategyCSM is AccessControlUpgradeable, PausableUpgradeable, ERC462
     }
 
     function _convertToShares(uint256 assets, Math.Rounding rounding) internal view override returns (uint256) {
-        return assets.mulDiv(totalSupply() + 10 ** _decimalsOffset(), totalAssets() + 1, rounding);
+        return assets.mulDiv(totalSupply() + uint256(10) ** _decimalsOffset(), tvl() + 1, rounding);
     }
 
     function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view override returns (uint256) {
-        return shares.mulDiv(totalAssets() + 1, totalSupply() + 10 ** _decimalsOffset(), rounding);
+        return shares.mulDiv(tvl() + 1, totalSupply() + uint256(10) ** _decimalsOffset(), rounding);
     }
 
     function _deposit(address caller, address receiver, uint256 assets, uint256 shares)
@@ -170,7 +186,7 @@ contract YAMStrategyCSM is AccessControlUpgradeable, PausableUpgradeable, ERC462
             if (isCSMToken(token)) {
                 uint256 csmAssets = shares.mulDiv(
                     ERC20(token).balanceOf(address(this)) + 1,
-                    oldTotalSypply + 10 ** (decimals() - ERC20(token).decimals()),
+                    oldTotalSypply + uint256(10) ** (decimals() - ERC20(token).decimals()),
                     Math.Rounding.Floor
                 );
                 SafeERC20.safeTransfer(ERC20(token), receiver, csmAssets);
@@ -180,11 +196,7 @@ contract YAMStrategyCSM is AccessControlUpgradeable, PausableUpgradeable, ERC462
         emit Withdraw(caller, receiver, owner, assets, shares);
     }
 
-    function _maxAmountToReceive(address tokenToReceive, uint256 price, uint256 amount)
-        private
-        view
-        returns (uint256)
-    {
+    function _maxAmountToBuy(address tokenToReceive, uint256 price, uint256 amount) private view returns (uint256) {
         uint256 idealAmountToReceive = (totalAssets() * uint256(10) ** ERC20(tokenToReceive).decimals() / price);
         uint256 amountToReceive = idealAmountToReceive;
         int256 testMaxAmount = int256(amount) - int256(idealAmountToReceive); // same decimals
@@ -219,7 +231,7 @@ contract YAMStrategyCSM is AccessControlUpgradeable, PausableUpgradeable, ERC462
         isCSM(offerToken)
         returns (uint256)
     {
-        uint256 amountToBuy = _maxAmountToReceive(offerToken, price, amount);
+        uint256 amountToBuy = _maxAmountToBuy(offerToken, price, amount);
         if ((amountToBuy * price) <= (uint256(10) ** ERC20(offerToken).decimals())) {
             revert CSMStrategy__AmountToBuyIsToLow();
         }

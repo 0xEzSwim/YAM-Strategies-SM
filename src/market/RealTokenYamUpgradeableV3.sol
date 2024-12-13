@@ -2,18 +2,18 @@
 pragma solidity ^0.8.0;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {ICleanSatMining, IBridgeToken} from "./interfaces/ICleanSatMining.sol";
+import {IRealTokenYamUpgradeableV3, IBridgeToken} from "./interfaces/IRealTokenYamUpgradeableV3.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
-contract CleanSatMining is
+contract RealTokenYamUpgradeableV3 is
     PausableUpgradeable,
     AccessControlUpgradeable,
     UUPSUpgradeable,
     ReentrancyGuardUpgradeable,
-    ICleanSatMining
+    IRealTokenYamUpgradeableV3
 {
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
     bytes32 public constant MODERATOR_ROLE = keccak256("MODERATOR_ROLE");
@@ -81,7 +81,7 @@ contract CleanSatMining is
         _unpause();
     }
 
-    /// @inheritdoc	ICleanSatMining
+    /// @inheritdoc	IRealTokenYamUpgradeableV3
     function toggleWhitelistWithType(address[] calldata tokens_, TokenType[] calldata types_)
         external
         override
@@ -96,20 +96,20 @@ contract CleanSatMining is
         emit TokenWhitelistWithTypeToggled(tokens_, types_);
     }
 
-    /// @inheritdoc	ICleanSatMining
+    /// @inheritdoc	IRealTokenYamUpgradeableV3
     function createOffer(address offerToken, address buyerToken, address buyer, uint256 price, uint256 amount)
         public
         override
         whenNotPaused
     {
-        // If the offerToken is a CleanSatMining, isTransferValid need to be checked
-        if (tokenTypes[offerToken] == TokenType.CLEANSATMINING) {
+        // If the offerToken is a RealToken, isTransferValid need to be checked
+        if (tokenTypes[offerToken] == TokenType.REALTOKEN) {
             require(_isTransferValid(offerToken, msg.sender, msg.sender, amount), "Seller can not transfer tokens");
         }
         _createOffer(offerToken, buyerToken, buyer, price, amount);
     }
 
-    /// @inheritdoc	ICleanSatMining
+    /// @inheritdoc	IRealTokenYamUpgradeableV3
     function createOfferWithPermit(
         address offerToken,
         address buyerToken,
@@ -122,8 +122,8 @@ contract CleanSatMining is
         bytes32 r,
         bytes32 s
     ) external override whenNotPaused {
-        // If the offerToken is a CleanSatMining, isTransferValid need to be checked
-        if (tokenTypes[offerToken] == TokenType.CLEANSATMINING) {
+        // If the offerToken is a RealToken, isTransferValid need to be checked
+        if (tokenTypes[offerToken] == TokenType.REALTOKEN) {
             require(_isTransferValid(offerToken, msg.sender, msg.sender, amount), "Seller can not transfer tokens");
         }
 
@@ -133,12 +133,12 @@ contract CleanSatMining is
         IBridgeToken(offerToken).permit(msg.sender, address(this), newAllowance, deadline, v, r, s);
     }
 
-    /// @inheritdoc	ICleanSatMining
+    /// @inheritdoc	IRealTokenYamUpgradeableV3
     function buy(uint256 offerId, uint256 price, uint256 amount) external override whenNotPaused {
         _buy(offerId, price, amount);
     }
 
-    /// @inheritdoc	ICleanSatMining
+    /// @inheritdoc	IRealTokenYamUpgradeableV3
     function buyWithPermit(
         uint256 offerId,
         uint256 price,
@@ -148,8 +148,8 @@ contract CleanSatMining is
         bytes32 r,
         bytes32 s
     ) external override whenNotPaused {
-        // If the offerToken is a CleanSatMining, isTransferValid need to be checked
-        if (tokenTypes[offerTokens[offerId]] == TokenType.CLEANSATMINING) {
+        // If the offerToken is a RealToken, isTransferValid need to be checked
+        if (tokenTypes[offerTokens[offerId]] == TokenType.REALTOKEN) {
             require(
                 _isTransferValid(offerTokens[offerId], sellers[offerId], msg.sender, amount), "transfer is not valid"
             );
@@ -160,12 +160,12 @@ contract CleanSatMining is
         _buy(offerId, price, amount);
     }
 
-    /// @inheritdoc	ICleanSatMining
+    /// @inheritdoc	IRealTokenYamUpgradeableV3
     function updateOffer(uint256 offerId, uint256 price, uint256 amount) external override whenNotPaused {
         _updateOffer(offerId, price, amount);
     }
 
-    /// @inheritdoc	ICleanSatMining
+    /// @inheritdoc	IRealTokenYamUpgradeableV3
     function updateOfferWithPermit(
         uint256 offerId,
         uint256 price,
@@ -181,13 +181,13 @@ contract CleanSatMining is
         _updateOffer(offerId, price, amount);
     }
 
-    /// @inheritdoc	ICleanSatMining
+    /// @inheritdoc	IRealTokenYamUpgradeableV3
     function deleteOffer(uint256 offerId) public override whenNotPaused {
         require(sellers[offerId] == msg.sender, "only the seller can delete offer");
         _deleteOffer(offerId);
     }
 
-    /// @inheritdoc	ICleanSatMining
+    /// @inheritdoc	IRealTokenYamUpgradeableV3
     function deleteOfferBatch(uint256[] calldata offerIds) external override whenNotPaused {
         uint256 length = offerIds.length;
         for (uint256 i = 0; i < length;) {
@@ -196,7 +196,7 @@ contract CleanSatMining is
         }
     }
 
-    /// @inheritdoc	ICleanSatMining
+    /// @inheritdoc	IRealTokenYamUpgradeableV3
     function deleteOfferByAdmin(uint256[] calldata offerIds) external override onlyRole(DEFAULT_ADMIN_ROLE) {
         uint256 length = offerIds.length;
         for (uint256 i = 0; i < length;) {
@@ -205,23 +205,23 @@ contract CleanSatMining is
         }
     }
 
-    /// @inheritdoc	ICleanSatMining
+    /// @inheritdoc	IRealTokenYamUpgradeableV3
     function getOfferCount() external view override returns (uint256) {
         return offerCount;
     }
 
-    /// @inheritdoc	ICleanSatMining
+    /// @inheritdoc	IRealTokenYamUpgradeableV3
     function getTokenType(address token) external view override returns (TokenType) {
         return tokenTypes[token];
     }
 
-    /// @inheritdoc	ICleanSatMining
+    /// @inheritdoc	IRealTokenYamUpgradeableV3
     function tokenInfo(address tokenAddr) external view override returns (uint256, string memory, string memory) {
         ERC20 tokenInterface = ERC20(tokenAddr);
         return (tokenInterface.decimals(), tokenInterface.symbol(), tokenInterface.name());
     }
 
-    /// @inheritdoc	ICleanSatMining
+    /// @inheritdoc	IRealTokenYamUpgradeableV3
     function getInitialOffer(uint256 offerId)
         external
         view
@@ -238,7 +238,7 @@ contract CleanSatMining is
         );
     }
 
-    /// @inheritdoc	ICleanSatMining
+    /// @inheritdoc	IRealTokenYamUpgradeableV3
     function showOffer(uint256 offerId)
         external
         view
@@ -268,19 +268,19 @@ contract CleanSatMining is
         );
     }
 
-    /// @inheritdoc	ICleanSatMining
+    /// @inheritdoc	IRealTokenYamUpgradeableV3
     function pricePreview(uint256 offerId, uint256 amount) external view override returns (uint256) {
         ERC20 offerTokenInterface = ERC20(offerTokens[offerId]);
         return (amount * prices[offerId]) / (uint256(10) ** offerTokenInterface.decimals());
     }
 
-    /// @inheritdoc	ICleanSatMining
+    /// @inheritdoc	IRealTokenYamUpgradeableV3
     function saveLostTokens(address token) external override onlyModeratorOrAdmin {
         ERC20 tokenInterface = ERC20(token);
         tokenInterface.transfer(msg.sender, tokenInterface.balanceOf(address(this)));
     }
 
-    /// @inheritdoc	ICleanSatMining
+    /// @inheritdoc	IRealTokenYamUpgradeableV3
     function setFee(uint256 fee_) external override onlyRole(DEFAULT_ADMIN_ROLE) {
         emit FeeChanged(fee, fee_);
         fee = fee_;
@@ -417,7 +417,7 @@ contract CleanSatMining is
         return isTransferValid;
     }
 
-    /// @inheritdoc	ICleanSatMining
+    /// @inheritdoc	IRealTokenYamUpgradeableV3
     function createOfferBatch(
         address[] calldata _offerTokens,
         address[] calldata _buyerTokens,
@@ -437,7 +437,7 @@ contract CleanSatMining is
         }
     }
 
-    /// @inheritdoc	ICleanSatMining
+    /// @inheritdoc	IRealTokenYamUpgradeableV3
     function updateOfferBatch(uint256[] calldata _offerIds, uint256[] calldata _prices, uint256[] calldata _amounts)
         external
         override
@@ -451,7 +451,7 @@ contract CleanSatMining is
         }
     }
 
-    /// @inheritdoc	ICleanSatMining
+    /// @inheritdoc	IRealTokenYamUpgradeableV3
     function buyOfferBatch(uint256[] calldata _offerIds, uint256[] calldata _prices, uint256[] calldata _amounts)
         external
         override

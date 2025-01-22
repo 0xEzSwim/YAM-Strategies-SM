@@ -3,12 +3,12 @@ pragma solidity ^0.8.18;
 
 import {console} from "forge-std/console.sol";
 import {Test} from "forge-std/Test.sol";
-import {DeployYAMStrategyCSM} from "../script/DeployYAMStrategyCSM.s.sol";
-import {DeployCleanSatMining} from "../script/market/DeployCleanSatMining.s.sol";
+import {DeployYAMStrategyCSM} from "../script/strategies/cleanSatMining/DeployYAMStrategyCSM.s.sol";
+import {DeployCleanSatMining} from "../script/markets/DeployCleanSatMining.s.sol";
 import {DeployUSDCToken} from "../script/tokens/DeployUSDCToken.s.sol";
 import {DeployCSMToken} from "../script/tokens/DeployCSMToken.s.sol";
-import {YAMStrategyCSM} from "../src/YAMStrategyCSM.sol";
-import {CleanSatMining, ICleanSatMining} from "../src/market/CleanSatMining.sol";
+import {YAMStrategyCSM} from "../src/strategies/YAMStrategyCSM.sol";
+import {CleanSatMining, ICleanSatMining} from "../src/markets/CleanSatMining.sol";
 import {USDCMock} from "./mocks/USDCMock.sol";
 import {CSMMock} from "./mocks/CSMMock.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -112,7 +112,7 @@ contract YAMStrategyCSMTest is Test {
 
         // Buy triggered by the bot (MODERATOR) only
         // TESTS
-        vm.expectRevert(YAMStrategyCSM.CSMStrategy__AmountToBuyIsToLow.selector);
+        vm.expectRevert(YAMStrategyCSM.YAMStrategy__AmountToBuyIsToLow.selector);
         vm.prank(MODERATOR);
         YAMStrategyCSM(startegy).buyMaxCSMTokenFromOffer(offerId, offerToken, buyerToken, price, amount);
 
@@ -153,7 +153,7 @@ contract YAMStrategyCSMTest is Test {
         console.log("strategyAUM:", strategyAUM);
         // Buy when asset is 0;
         // TESTS
-        vm.expectRevert(YAMStrategyCSM.CSMStrategy__AmountToBuyIsToLow.selector);
+        vm.expectRevert(YAMStrategyCSM.YAMStrategy__AmountToBuyIsToLow.selector);
         vm.prank(MODERATOR);
         YAMStrategyCSM(startegy).buyMaxCSMTokenFromOffer(offerId, offerToken, buyerToken, price, amount);
 

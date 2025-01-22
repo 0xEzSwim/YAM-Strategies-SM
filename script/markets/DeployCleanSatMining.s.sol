@@ -5,11 +5,9 @@ pragma solidity ^0.8.18;
 import {console} from "forge-std/console.sol";
 import {Script} from "forge-std/Script.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {CleanSatMining} from "../../src/market/CleanSatMining.sol";
+import {CleanSatMining} from "../../src/markets/CleanSatMining.sol";
 
 contract DeployCleanSatMining is Script {
-    bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
-
     struct Initializer {
         address admin;
         address moderator;
@@ -26,13 +24,13 @@ contract DeployCleanSatMining is Script {
     }
 
     function deploy(Initializer memory initializer) private returns (address proxy, address implementation) {
-        implementation = deployStrategy();
+        implementation = deployCleanSatMining();
         proxy = deployProxyByOwner(initializer, implementation);
 
         return (proxy, implementation);
     }
 
-    function deployStrategy() private returns (address) {
+    function deployCleanSatMining() private returns (address) {
         vm.startBroadcast();
         CleanSatMining implementation = new CleanSatMining();
         vm.stopBroadcast();

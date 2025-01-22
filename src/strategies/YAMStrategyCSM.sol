@@ -8,7 +8,7 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
 import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {CleanSatMining} from "./market/CleanSatMining.sol";
+import {CleanSatMining} from "../markets/CleanSatMining.sol";
 
 contract YAMStrategyCSM is AccessControlUpgradeable, PausableUpgradeable, ERC4626Upgradeable, UUPSUpgradeable {
     using Math for uint256;
@@ -18,9 +18,9 @@ contract YAMStrategyCSM is AccessControlUpgradeable, PausableUpgradeable, ERC462
         bool _isTypeCSM;
     }
 
-    error CSMStrategy__NotUnderlyingAsset(address token);
-    error CSMStrategy__NotCSM(address token);
-    error CSMStrategy__AmountToBuyIsToLow();
+    error YAMStrategy__NotUnderlyingAsset(address token);
+    error YAMStrategy__NotCSM(address token);
+    error YAMStrategy__AmountToBuyIsToLow();
 
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
     bytes32 public constant MODERATOR_ROLE = keccak256("MODERATOR_ROLE");
@@ -62,14 +62,14 @@ contract YAMStrategyCSM is AccessControlUpgradeable, PausableUpgradeable, ERC462
 
     modifier isUnderlyingAsset(address token) {
         if (token != asset()) {
-            revert CSMStrategy__NotUnderlyingAsset(token);
+            revert YAMStrategy__NotUnderlyingAsset(token);
         }
         _;
     }
 
     modifier isCSM(address token) {
         if (!isCSMToken(token)) {
-            revert CSMStrategy__NotCSM(token);
+            revert YAMStrategy__NotCSM(token);
         }
         _;
     }
@@ -192,7 +192,7 @@ contract YAMStrategyCSM is AccessControlUpgradeable, PausableUpgradeable, ERC462
     {
         uint256 amountToBuy = _maxAmountToBuy(offerToken, price, amount);
         if ((amountToBuy * price) <= (uint256(10) ** ERC20(offerToken).decimals())) {
-            revert CSMStrategy__AmountToBuyIsToLow();
+            revert YAMStrategy__AmountToBuyIsToLow();
         }
 
         uint256 newAverageBuyingPrice = _calculateNewHoldingBuyingPrice(offerToken, price, amount);

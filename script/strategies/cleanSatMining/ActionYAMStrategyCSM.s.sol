@@ -4,10 +4,10 @@ pragma solidity ^0.8.0;
 
 import {console} from "forge-std/console.sol";
 import {Script} from "forge-std/Script.sol";
-import {YAMStrategyCSM} from "../src/YAMStrategyCSM.sol";
-import {CleanSatMining} from "../src/market/CleanSatMining.sol";
-import {USDCMock} from "../test/mocks/USDCMock.sol";
-import {CSMMock} from "../test/mocks/CSMMock.sol";
+import {YAMStrategyCSM} from "../../../src/strategies/YAMStrategyCSM.sol";
+import {CleanSatMining} from "../../../src/markets/CleanSatMining.sol";
+import {USDCMock} from "../../../test/mocks/USDCMock.sol";
+import {CSMMock} from "../../../test/mocks/CSMMock.sol";
 
 contract ActionYAMStrategyCSM is Script {
     address public ADMIN = vm.envAddress("ADMIN_PUBLIC_KEY");

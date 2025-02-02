@@ -11,8 +11,8 @@ import {DevOpsTools} from "@foundry-devops/src/DevOpsTools.sol";
 
 contract DeployYAMStrategyRealt is Script {
     function run(string memory strategyName) external returns (address) {
-        console.log("_DeployYAMStrategyRealt_");
         (address proxy, address implementation) = _deploy(strategyName);
+        console.log("_DeployYAMStrategyRealt_");
         console.log("\t=>proxy address:", proxy);
         console.log("\t=>implementation address:", implementation);
         console.log("\t=>Token Name:", YAMStrategyRealt(proxy).name());
@@ -23,7 +23,7 @@ contract DeployYAMStrategyRealt is Script {
 
     function _deploy(string memory strategyName) private returns (address proxy, address implementation) {
         implementation = deployStrategy();
-        proxy = deployProxyByOwner(strategyName);
+        proxy = _deployProxyByOwner(strategyName, implementation);
 
         return (proxy, implementation);
     }
@@ -38,6 +38,10 @@ contract DeployYAMStrategyRealt is Script {
 
     function deployProxyByOwner(string memory strategyName) public returns (address) {
         address implementation = DevOpsTools.get_most_recent_deployment("YAMStrategyRealt", block.chainid);
+        return _deployProxyByOwner(strategyName, implementation);
+    }
+
+    function _deployProxyByOwner(string memory strategyName, address implementation) private returns (address) {
         HelperConfigYAMStrategyRealt config = new HelperConfigYAMStrategyRealt();
         (address admin, address moderator, address asset, address market) = config.activeNetworkConfig();
         address[] memory tokens = config.getTokens();
@@ -48,6 +52,7 @@ contract DeployYAMStrategyRealt is Script {
         vm.startBroadcast();
         ERC1967Proxy proxy = new ERC1967Proxy(implementation, data);
         vm.stopBroadcast();
+
         return address(proxy);
     }
 }

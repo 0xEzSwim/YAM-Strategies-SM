@@ -6,11 +6,12 @@ import {Script} from "forge-std/Script.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {YAMStrategyCSM} from "../../../src/strategies/YAMStrategyCSM.sol";
 import {HelperConfigYAMStrategyCSM} from "./HelperConfigYAMStrategyCSM.s.sol";
+import {DevOpsTools} from "@foundry-devops/src/DevOpsTools.sol";
 
 contract DeployYAMStrategyCSM is Script {
     function run(string memory strategyName) external returns (address) {
-        console.log("_DeployYAMStrategyCSM_");
         (address proxy, address implementation) = _deploy(strategyName);
+        console.log("_DeployYAMStrategyCSM_");
         console.log("\t=>proxy address:", proxy);
         console.log("\t=>implementation address:", implementation);
         console.log("\t=>Token Name:", YAMStrategyCSM(proxy).name());
@@ -21,7 +22,7 @@ contract DeployYAMStrategyCSM is Script {
 
     function _deploy(string memory strategyName) private returns (address proxy, address implementation) {
         implementation = deployStrategy();
-        proxy = deployProxyByOwner(strategyName, implementation);
+        proxy = _deployProxyByOwner(strategyName, implementation);
 
         return (proxy, implementation);
     }
@@ -35,6 +36,11 @@ contract DeployYAMStrategyCSM is Script {
     }
 
     function deployProxyByOwner(string memory strategyName, address implementation) public returns (address) {
+        address implementation = DevOpsTools.get_most_recent_deployment("YAMStrategyCSM", block.chainid);
+        return _deployProxyByOwner(strategyName, implementation);
+    }
+
+    function _deployProxyByOwner(string memory strategyName, address implementation) private returns (address) {
         HelperConfigYAMStrategyCSM config = new HelperConfigYAMStrategyCSM();
         (address admin, address moderator, address asset, address market) = config.activeNetworkConfig();
         address[] memory tokens = config.getTokens();
@@ -45,6 +51,7 @@ contract DeployYAMStrategyCSM is Script {
         vm.startBroadcast();
         ERC1967Proxy proxy = new ERC1967Proxy(implementation, data);
         vm.stopBroadcast();
+
         return address(proxy);
     }
 }

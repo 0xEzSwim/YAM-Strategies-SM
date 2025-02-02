@@ -97,9 +97,6 @@ contract HelperConfigYAMStrategyRealt is HelperConfigYAMStrategy, Script {
         );
         address[] memory tokens = new address[](1);
         tokens[0] = rwaToken;
-        vm.startBroadcast();
-        RealTokenMock(rwaToken).mint(admin, 100000000000000); // RWA-HOLDINGS => 100,000.000000000 tokens
-        vm.stopBroadcast();
 
         // Set up CSM Market
         address market = new DeployRealTokenYAM().run(admin);

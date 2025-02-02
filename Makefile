@@ -49,6 +49,8 @@ anvil :; anvil -m 'test test test test test test test test test test test junk' 
 # get-sepolia-box-version:
 # 	@cast call $(PROXY_CONTRACT_ADDRESS) "getVersion()(uint64)" --rpc-url $(SEPOLIA_RPC_URL)
 
+### ANVIL ###
+
 dev: fund-accounts
 	@forge script script/tokens/DeployUSDCToken.s.sol:DeployUSDCToken --sig "run()" --rpc-url $(LOCAL_RPC_URL) --broadcast --account $(ADMIN_ACCOUNT_NAME) --password $(ADMIN_ACCOUNT_PASSWORD) --sender $(ADMIN_PUBLIC_KEY)
 	@forge script script/strategies/cleanSatMining/DeployYAMStrategyCSM.s.sol:DeployYAMStrategyCSM --sig "run(string)" "Undervalued" --rpc-url $(LOCAL_RPC_URL) --broadcast --account $(ADMIN_ACCOUNT_NAME) --password $(ADMIN_ACCOUNT_PASSWORD) --sender $(ADMIN_PUBLIC_KEY)
@@ -78,3 +80,26 @@ get-local-alpha-in-strategy:
 
 get-local-delta-in-strategy:
 	@forge script script/strategies/cleanSatMining/ActionYAMStrategyCSM.s.sol:ActionYAMStrategyCSM --sig "getDeltaBalance()" --rpc-url $(LOCAL_RPC_URL) --broadcast --account $(ADMIN_ACCOUNT_NAME) --password $(ADMIN_ACCOUNT_PASSWORD) --sender $(ADMIN_PUBLIC_KEY)
+
+### SEPOLIA ###
+
+deploy-usdc-sepolia: 
+	@forge script script/tokens/DeployUSDCToken.s.sol:DeployUSDCToken --sig "run()" --rpc-url $(SEPOLIA_RPC_URL) --broadcast --account $(ADMIN_ACCOUNT_NAME) --password $(ADMIN_ACCOUNT_PASSWORD) --sender $(ADMIN_PUBLIC_KEY) --verify --etherscan-api-key $(ETHERSCAN_API_KEY) -vvvvv
+
+deploy-rwa-sepolia: 
+	@forge script script/tokens/DeployRealToken.s.sol:DeployRealToken --sig "run(string, string)" "RealToken RWA Holdings SA, Neuchatel, NE, Suisse Mock" "REALTOKEN-CH-S-RWA-HOLDINGS-SA-NEUCHATEL-NE.M" --rpc-url $(SEPOLIA_RPC_URL) --broadcast --account $(ADMIN_ACCOUNT_NAME) --password $(ADMIN_ACCOUNT_PASSWORD) --sender $(ADMIN_PUBLIC_KEY) --verify --etherscan-api-key $(ETHERSCAN_API_KEY) -vvvvv
+
+deploy-yam-implementation-sepolia:
+	@forge script script/markets/DeployRealTokenYAM.s.sol:DeployRealTokenYAM --sig "deployRealTokenYamUpgradeableV3()" --rpc-url $(SEPOLIA_RPC_URL) --broadcast --account $(ADMIN_ACCOUNT_NAME) --password $(ADMIN_ACCOUNT_PASSWORD) --sender $(ADMIN_PUBLIC_KEY) --verify --etherscan-api-key $(ETHERSCAN_API_KEY) -vvvvv
+	
+deploy-yam-proxy-sepolia:
+	@forge script script/markets/DeployRealTokenYAM.s.sol:DeployRealTokenYAM --sig "deployProxyByOwner(address)" $(ADMIN_PUBLIC_KEY) --rpc-url $(SEPOLIA_RPC_URL) --broadcast --account $(ADMIN_ACCOUNT_NAME) --password $(ADMIN_ACCOUNT_PASSWORD) --sender $(ADMIN_PUBLIC_KEY) --verify --etherscan-api-key $(ETHERSCAN_API_KEY) -vvvvv
+
+deploy-yam-strategy-implementation-sepolia:
+	@forge script script/strategies/realt/DeployYAMStrategyRealt.s.sol:DeployYAMStrategyRealt --sig "deployStrategy()" --rpc-url $(SEPOLIA_RPC_URL) --broadcast --account $(ADMIN_ACCOUNT_NAME) --password $(ADMIN_ACCOUNT_PASSWORD) --sender $(ADMIN_PUBLIC_KEY) --verify --etherscan-api-key $(ETHERSCAN_API_KEY) -vvvvv
+	
+deploy-yam-strategy-proxy-sepolia:
+	@forge script script/strategies/realt/DeployYAMStrategyRealt.s.sol:DeployYAMStrategyRealt --sig "deployProxyByOwner(string)" "Undervalued RWA" --rpc-url $(SEPOLIA_RPC_URL) --broadcast --account $(ADMIN_ACCOUNT_NAME) --password $(ADMIN_ACCOUNT_PASSWORD) --sender $(ADMIN_PUBLIC_KEY) --verify --etherscan-api-key $(ETHERSCAN_API_KEY) -vvvvv
+
+sepolia: 
+	@forge script script/strategies/realt/DeployYAMStrategyRealt.s.sol:DeployYAMStrategyRealt --sig "run(string)" "Undervalued RWA" --rpc-url $(SEPOLIA_RPC_URL) --broadcast --account $(ADMIN_ACCOUNT_NAME) --password $(ADMIN_ACCOUNT_PASSWORD) --sender $(ADMIN_PUBLIC_KEY) --verify --etherscan-api-key $(ETHERSCAN_API_KEY) -vvvvv

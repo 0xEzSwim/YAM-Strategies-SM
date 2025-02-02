@@ -1,36 +1,31 @@
 // SPX-License-Identifier: MIT
 
-pragma solidity ^0.8.18;
+pragma solidity ^0.8.0;
 
 import {console} from "forge-std/console.sol";
 import {Script} from "forge-std/Script.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {CleanSatMining} from "../../src/markets/CleanSatMining.sol";
+import {DevOpsTools} from "@foundry-devops/src/DevOpsTools.sol";
 
 contract DeployCleanSatMining is Script {
-    struct Initializer {
-        address admin;
-        address moderator;
-    }
-
     function run(address owner) external returns (address) {
-        Initializer memory initializer = Initializer(owner, owner);
         console.log("_DeployCleanSatMining_");
-        (address proxy, address implementation) = deploy(initializer);
+        (address proxy, address implementation) = _deploy(owner);
         console.log("\t=>proxy address:", proxy);
         console.log("\t=>implementation address:", implementation);
 
         return proxy;
     }
 
-    function deploy(Initializer memory initializer) private returns (address proxy, address implementation) {
+    function _deploy(address owner) private returns (address proxy, address implementation) {
         implementation = deployCleanSatMining();
-        proxy = deployProxyByOwner(initializer, implementation);
+        proxy = deployProxyByOwner(owner);
 
         return (proxy, implementation);
     }
 
-    function deployCleanSatMining() private returns (address) {
+    function deployCleanSatMining() public returns (address) {
         vm.startBroadcast();
         CleanSatMining implementation = new CleanSatMining();
         vm.stopBroadcast();
@@ -38,9 +33,9 @@ contract DeployCleanSatMining is Script {
         return address(implementation);
     }
 
-    function deployProxyByOwner(Initializer memory initializer, address implementation) private returns (address) {
-        bytes memory data =
-            abi.encodeWithSelector(CleanSatMining.initialize.selector, initializer.admin, initializer.moderator); // set proxy admin & moderator
+    function deployProxyByOwner(address owner) public returns (address) {
+        address implementation = DevOpsTools.get_most_recent_deployment("CleanSatMining", block.chainid);
+        bytes memory data = abi.encodeWithSelector(CleanSatMining.initialize.selector, owner, owner); // set proxy admin & moderator
         vm.startBroadcast();
         ERC1967Proxy proxy = new ERC1967Proxy(implementation, data);
         vm.stopBroadcast();

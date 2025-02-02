@@ -34,6 +34,9 @@ abstract contract HelperConfigYAMStrategy {
     function __HelperConfigYAMStrategy_init() internal {
         if (block.chainid == 100) {
             activeNetworkConfig = _getGnosisConfig();
+        }
+        if (block.chainid == 11155111) {
+            activeNetworkConfig = _getSepoliaConfig();
         } else {
             // 31337 => Local chain (Anvil id)
             activeNetworkConfig = _getLocalConfig();
@@ -49,6 +52,16 @@ abstract contract HelperConfigYAMStrategy {
     }
 
     function _createGnosisConfig() internal view virtual returns (NetworkConfig memory);
+
+    function _getSepoliaConfig() private returns (NetworkConfig memory) {
+        if (activeNetworkConfig.asset != address(0)) {
+            return activeNetworkConfig;
+        }
+
+        return _createSepoliaConfig();
+    }
+
+    function _createSepoliaConfig() internal virtual returns (NetworkConfig memory);
 
     function _getLocalConfig() private returns (NetworkConfig memory) {
         if (activeNetworkConfig.asset != address(0)) {

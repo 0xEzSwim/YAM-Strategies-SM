@@ -13,6 +13,7 @@ import {
 import {USDCMock} from "../../../test/mocks/USDCMock.sol";
 import {RealTokenMock} from "../../../test/mocks/RealTokenMock.sol";
 import {DevOpsTools} from "@foundry-devops/src/DevOpsTools.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 contract HelperConfigYAMStrategyRealt is HelperConfigYAMStrategy, Script {
     constructor() {
@@ -32,45 +33,7 @@ contract HelperConfigYAMStrategyRealt is HelperConfigYAMStrategy, Script {
         });
     }
 
-    function _createSepoliaConfigOnce(NetworkConfig memory config) private returns (NetworkConfig memory) {
-        // Set up Whitelist for CSM Market
-        address[] memory whitelistedTokens = new address[](2);
-        whitelistedTokens[0] = config.asset;
-        whitelistedTokens[1] = config.tokens[0];
-        IRealTokenYamUpgradeableV3.TokenType[] memory tokenTypes = new IRealTokenYamUpgradeableV3.TokenType[](2);
-        tokenTypes[0] = IRealTokenYamUpgradeableV3.TokenType.ERC20WITHPERMIT;
-        tokenTypes[1] = IRealTokenYamUpgradeableV3.TokenType.REALTOKEN;
-        vm.startBroadcast(config.admin);
-        RealTokenYamUpgradeableV3(config.market).toggleWhitelistWithType(whitelistedTokens, tokenTypes);
-        vm.stopBroadcast();
-
-        // Set up Market offers
-        vm.startBroadcast(config.admin);
-        // approve & create offer to sell 100 CSM-ALPHA for 14.05 USDC
-        uint256 offerPrice = 5000 * uint256(10) ** (USDCMock(config.asset).decimals() - 2);
-        uint256 offerAmount = 100 * uint256(10) ** RealTokenMock(config.tokens[0]).decimals();
-        RealTokenMock(config.tokens[0]).approve(config.market, offerAmount);
-        RealTokenYamUpgradeableV3(config.market).createOffer(
-            config.tokens[0], config.asset, address(0), offerPrice, offerAmount
-        );
-        vm.stopBroadcast();
-
-        uint256 offerCount = RealTokenYamUpgradeableV3(config.market).getOfferCount();
-        console.log("# of offers on market:", offerCount);
-        for (uint256 offerId = 0; offerId < offerCount; offerId++) {
-            (address offerToken, address buyerToken, address seller, address buyer, uint256 price, uint256 amount) =
-                RealTokenYamUpgradeableV3(config.market).showOffer(offerId);
-            console.log("__ offer #", offerId, "__");
-            console.log("market offer's seller:", seller);
-            console.log("market offer is private:", buyer == address(0));
-            console.log("market offer tokens to send:", offerToken, amount);
-            console.log("market offer tokens to receive:", buyerToken, price);
-        }
-
-        return config;
-    }
-
-    function _createSepoliaConfig() internal override returns (NetworkConfig memory) {
+    function _createSepoliaConfig() internal view override returns (NetworkConfig memory) {
         address[] memory tokens = new address[](1);
         tokens[0] = 0x321736061AC6e0372DD729Fd83629D8F7F5DEA94; // RWA-HOLDINGS.M
 
@@ -83,62 +46,24 @@ contract HelperConfigYAMStrategyRealt is HelperConfigYAMStrategy, Script {
         });
     }
 
-    function _createLocalConfig() internal override returns (NetworkConfig memory) {
+    function _createLocalConfig() internal view override returns (NetworkConfig memory) {
         address admin = vm.envAddress("ADMIN_PUBLIC_KEY");
         address moderator = vm.envAddress("MODERATOR_PUBLIC_KEY");
 
         // Get Underlying Asset
         address asset = DevOpsTools.get_most_recent_deployment("USDCMock", block.chainid);
 
-        // Setup CSM TOKENS
-        DeployRealToken realTokenDeployer = new DeployRealToken();
-        address rwaToken = realTokenDeployer.run(
-            "RealToken RWA Holdings SA, Neuchatel, NE, Suisse Mock", "REALTOKEN-CH-S-RWA-HOLDINGS-SA-NEUCHATEL-NE.M"
-        );
+        // Get TOKENS
+        address rwaToken = DevOpsTools.get_most_recent_deployment("RealTokenMock", block.chainid);
         address[] memory tokens = new address[](1);
         tokens[0] = rwaToken;
 
-        // Set up CSM Market
-        address market = new DeployRealTokenYAM().run(admin);
+        // Get Market
+        address marketImplementation =
+            DevOpsTools.get_most_recent_deployment("RealTokenYamUpgradeableV3", block.chainid);
+        string memory marketString = Strings.toChecksumHexString(marketImplementation);
+        address market = DevOpsTools.get_most_recent_deployment("ERC1967Proxy", marketString, block.chainid);
 
-        // NETWORK CONFIG
-        NetworkConfig memory config =
-            NetworkConfig({admin: admin, moderator: moderator, asset: asset, market: market, tokens: tokens});
-
-        // Set up Whitelist for CSM Market
-        address[] memory whitelistedTokens = new address[](2);
-        whitelistedTokens[0] = asset;
-        whitelistedTokens[1] = rwaToken;
-        IRealTokenYamUpgradeableV3.TokenType[] memory tokenTypes = new IRealTokenYamUpgradeableV3.TokenType[](2);
-        tokenTypes[0] = IRealTokenYamUpgradeableV3.TokenType.ERC20WITHPERMIT;
-        tokenTypes[1] = IRealTokenYamUpgradeableV3.TokenType.REALTOKEN;
-        vm.startBroadcast(admin);
-        RealTokenYamUpgradeableV3(market).toggleWhitelistWithType(whitelistedTokens, tokenTypes);
-        vm.stopBroadcast();
-
-        // Set up Market offers
-        vm.startBroadcast(admin);
-        // approve & create offer to sell 100 CSM-ALPHA for 14.05 USDC
-        uint256 offerPrice = 5000 * uint256(10) ** (USDCMock(asset).decimals() - 2);
-        uint256 offerAmount = 100 * uint256(10) ** RealTokenMock(rwaToken).decimals();
-        RealTokenMock(rwaToken).approve(market, offerAmount);
-        RealTokenYamUpgradeableV3(market).createOffer(rwaToken, asset, address(0), offerPrice, offerAmount);
-        vm.stopBroadcast();
-        vm.warp(block.timestamp + 1);
-        vm.roll(block.number + 1); // can't buy an offer from the same block number.
-
-        uint256 offerCount = RealTokenYamUpgradeableV3(market).getOfferCount();
-        console.log("# of offers on market:", offerCount);
-        for (uint256 offerId = 0; offerId < offerCount; offerId++) {
-            (address offerToken, address buyerToken, address seller, address buyer, uint256 price, uint256 amount) =
-                RealTokenYamUpgradeableV3(market).showOffer(offerId);
-            console.log("__ offer #", offerId, "__");
-            console.log("market offer's seller:", seller);
-            console.log("market offer is private:", buyer == address(0));
-            console.log("market offer tokens to send:", offerToken, amount);
-            console.log("market offer tokens to receive:", buyerToken, price);
-        }
-
-        return config;
+        return NetworkConfig({admin: admin, moderator: moderator, asset: asset, market: market, tokens: tokens});
     }
 }

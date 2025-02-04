@@ -11,6 +11,7 @@ import {CleanSatMining, ICleanSatMining} from "../../../src/markets/CleanSatMini
 import {USDCMock} from "../../../test/mocks/USDCMock.sol";
 import {CSMMock} from "../../../test/mocks/CSMMock.sol";
 import {DevOpsTools} from "@foundry-devops/src/DevOpsTools.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 contract HelperConfigYAMStrategyCSM is HelperConfigYAMStrategy, Script {
     constructor() {
@@ -51,73 +52,25 @@ contract HelperConfigYAMStrategyCSM is HelperConfigYAMStrategy, Script {
         });
     }
 
-    function _createLocalConfig() internal override returns (NetworkConfig memory) {
+    function _createLocalConfig() internal view override returns (NetworkConfig memory) {
         address admin = vm.envAddress("ADMIN_PUBLIC_KEY");
         address moderator = vm.envAddress("MODERATOR_PUBLIC_KEY");
 
         // Get Underlying Asset
         address asset = DevOpsTools.get_most_recent_deployment("USDCMock", block.chainid);
 
-        // Setup CSM TOKENS
-        DeployCSMToken csmDeployer = new DeployCSMToken();
-        address csmAlpha = csmDeployer.run("CleanSatMining ALPHA", "CSM-ALPHA");
-        address csmDelta = csmDeployer.run("CleanSatMining DELTA", "CSM-DELTA");
+        // Get TOKENS
+        address csmAlpha = DevOpsTools.get_most_recent_deployment("CSMMock", "CSM-ALPHA.M", block.chainid);
+        address csmDelta = DevOpsTools.get_most_recent_deployment("CSMMock", "CSM-DELTA.M", block.chainid);
         address[] memory tokens = new address[](2);
         tokens[0] = csmAlpha;
         tokens[1] = csmDelta;
-        vm.startBroadcast();
-        CSMMock(csmAlpha).mint(admin, 141723598152480); // CSM-ALPHA => 141,723.59815248 tokens
-        CSMMock(csmDelta).mint(admin, 219566245519713); // CSM-DELTA => 219,566.245519713 tokens
-        vm.stopBroadcast();
 
-        // Set up CSM Market
-        address market = new DeployCleanSatMining().run(admin);
+        // Get Market
+        address marketImplementation = DevOpsTools.get_most_recent_deployment("CleanSatMining", block.chainid);
+        string memory marketString = Strings.toChecksumHexString(marketImplementation);
+        address market = DevOpsTools.get_most_recent_deployment("ERC1967Proxy", marketString, block.chainid);
 
-        // NETWORK CONFIG
-        NetworkConfig memory config =
-            NetworkConfig({admin: admin, moderator: moderator, asset: asset, market: market, tokens: tokens});
-
-        // Set up Whitelist for CSM Market
-        address[] memory whitelistedTokens = new address[](3);
-        whitelistedTokens[0] = asset;
-        whitelistedTokens[1] = csmAlpha;
-        whitelistedTokens[2] = csmDelta;
-        ICleanSatMining.TokenType[] memory tokenTypes = new ICleanSatMining.TokenType[](3);
-        tokenTypes[0] = ICleanSatMining.TokenType.ERC20WITHPERMIT;
-        tokenTypes[1] = ICleanSatMining.TokenType.CLEANSATMINING;
-        tokenTypes[2] = ICleanSatMining.TokenType.CLEANSATMINING;
-        vm.startBroadcast(admin);
-        CleanSatMining(market).toggleWhitelistWithType(whitelistedTokens, tokenTypes);
-        vm.stopBroadcast();
-
-        // Set up Market offers
-        vm.startBroadcast(admin);
-        // approve & create offer to sell 100 CSM-ALPHA for 14.05 USDC
-        uint256 offerPrice = 1405 * uint256(10) ** (USDCMock(asset).decimals() - 2);
-        uint256 offerAmount = 100 * uint256(10) ** CSMMock(csmAlpha).decimals();
-        CSMMock(csmAlpha).approve(market, offerAmount);
-        CleanSatMining(market).createOffer(csmAlpha, asset, address(0), offerPrice, offerAmount);
-        // approve & create offer to sell 250 CSM-DELTA for 7.44 USDC
-        offerPrice = 744 * uint256(10) ** (USDCMock(asset).decimals() - 2);
-        offerAmount = 250 * uint256(10) ** CSMMock(csmDelta).decimals();
-        CSMMock(csmDelta).approve(market, offerAmount);
-        CleanSatMining(market).createOffer(csmDelta, asset, address(0), offerPrice, offerAmount);
-        vm.stopBroadcast();
-        vm.warp(block.timestamp + 1);
-        vm.roll(block.number + 1); // can't buy an offer from the same block number.
-
-        uint256 offerCount = CleanSatMining(market).getOfferCount();
-        console.log("# of offers on market:", offerCount);
-        for (uint256 offerId = 0; offerId < offerCount; offerId++) {
-            (address offerToken, address buyerToken, address seller, address buyer, uint256 price, uint256 amount) =
-                CleanSatMining(market).showOffer(offerId);
-            console.log("__ offer #", offerId, "__");
-            console.log("market offer's seller:", seller);
-            console.log("market offer is private:", buyer == address(0));
-            console.log("market offer tokens to send:", offerToken, amount);
-            console.log("market offer tokens to receive:", buyerToken, price);
-        }
-
-        return config;
+        return NetworkConfig({admin: admin, moderator: moderator, asset: asset, market: market, tokens: tokens});
     }
 }

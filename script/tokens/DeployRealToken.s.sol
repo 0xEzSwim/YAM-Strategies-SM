@@ -9,7 +9,7 @@ import {RealTokenMock} from "../../test/mocks/RealTokenMock.sol";
 contract DeployRealToken is Script {
     address private token;
 
-    function run(string memory _name, string memory _symbol) external returns (address) {
+    function run(string memory _name, string memory _symbol, uint256 amount) external returns (address) {
         address admin = vm.envAddress("ADMIN_PUBLIC_KEY");
 
         vm.startBroadcast();
@@ -19,7 +19,7 @@ contract DeployRealToken is Script {
         if (block.chainid != 100) {
             // Gnosis chain
             vm.startBroadcast();
-            RealTokenMock(token).mint(admin, 100000000000000); // RWA-HOLDINGS => 100,000.000000000 tokens
+            RealTokenMock(token).mint(admin, amount); // RWA-HOLDINGS => 100,000.000000000 tokens
             vm.stopBroadcast();
         }
 
